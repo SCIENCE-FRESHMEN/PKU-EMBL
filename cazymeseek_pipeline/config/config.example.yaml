@@ -1,0 +1,57 @@
+# CAZymeSeek/dbCAN configuration. Source tags refer to 2024.01.10.575125v1.full.pdf.
+paths:
+  # Project root; output/ and logs are created underneath this directory.
+  project_dir: /data/cazymeseek_pipeline
+  # TSV columns: sample_id, read1, read2. [dbCAN PDF, Table 2 and P1--P2]
+  samples_tsv: /data/cazymeseek_pipeline/config/samples.tsv
+  # run_dbcan HMM/CAZy/dbCAN-sub/dbCAN-PUL data directory. [dbCAN PDF, S4]
+  dbcan_db_dir: /data/dbcan_db
+  # Kraken2 reference database; only used for contamination assessment. [P1]
+  kraken_db_dir: /data/kraken2_db
+  # Supplied four ChromaDB stores + models/all-MiniLM-L6-v2. [CAZymeSeek asset README]
+  vector_db_dir: /data/cazymeseek_pipeline/vector_db
+
+resources:
+  # Paper reference host: 40 CPUs and 128 GB RAM; use one individual sample at once.
+  threads: 40
+  memory_gb: 128
+
+assembly:
+  # individual is implemented. coassembly and assembly_free are documented in README
+  # because the PDF describes different data paths and does not support substituting one for another.
+  mode: individual                 # individual | coassembly | assembly_free
+  # Published P3 example uses 1,000 bp and MEGAHIT -m 0.5.
+  min_contig_len: 1000
+  megahit_memory_fraction: 0.5
+
+contamination_removal:
+  # P1 requires first identifying a contamination source; Carter2023 did not require removal.
+  enabled: false
+  reference_fasta: /data/references/Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz
+
+tools:
+  trim_galore: trim_galore
+  kraken2: kraken2
+  megahit: megahit
+  prokka: prokka
+  run_dbcan: run_dbcan
+  bwa: bwa
+  samtools: samtools
+  bedtools: bedtools
+  seqkit: seqkit
+  dbcan_utils: dbcan_utils
+
+retrieval:
+  # Project assets provide cosine distance but no score cutoff; retain all top-k evidence.
+  top_k: 3
+  semantic_confidence_threshold: null
+
+evidence:
+  # Reporting labels are transparent project conventions, not a threshold defined in either PDF.
+  # A: dbCAN-sub EC plus subfamily or dbCAN-PUL substrate; B: family annotation evidence; C: retrieval/vote only.
+  confidence_thresholds: null
+
+visualization:
+  formats: [png, pdf]
+  png_dpi: 300
+  top_n: 20                       # Fig. 6 examples show top 20 families/substrates.

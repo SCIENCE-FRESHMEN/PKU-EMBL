@@ -1,0 +1,96 @@
+EB05: CAZymeSeek​
+Meetings Repo​
+ 📍 Put all the recorded meetings here. (Paste the meeting links)​
+
+
+
+
+​
+Project-related Papers ​
+ 🏕️ You need to manage and put all project related papers here​
+ https://www.cazypedia.org/
+ CAZypedia
+ https://www.biorxiv.org/content/10.1101/2024.01.10.575125v1.full.pdf
+ www.biorxiv.org
+​
+Dataset​
+1. CAZyme Databases​
+    https://www.cazy.org/
+    www.cazy.org
+    https://www.uniprot.org/database/DB-0136
+    UniProt
+    UniProt is the world's leading high-quality, comprehensive and freely accessible resource of protein sequence and functional information.
+
+​
+​
+2. CGC Databases​
+​
+​
+​
+3. Substrate Prediction Databases​
+                                            https://pro.unl.edu/dbCAN_sub/download.php
+                                            dbCAN-sub
+                                            Home Download Help About us Cite us: NAR/gky328 , gky418 and gks479 Downloads Name Size Modified
+                                            📁 CAZy_with_ECs 2026-03-23 16:00 📄 combined23_08_18.csv 1.52 MB 2026-03-23 15:58 Download 📄…
+​
+Research Papers​
+    🥛 The current update is based on (CAZyDB.07242025.fa) with subfamilies for 505 CAZyme families (AA: 18; CE: 20; PL:
+         42; GH: 186; GT: 135; CBM: 104). There are in total 53,411 clustered subfamilies and 442 unclustered
+         subfamilies. Compared to the last version, this new release includes 70 newly added families, distributed across
+         the different classes as follows: AA (1), CE (2), PL (2), GH (23), GT (24), and CBM (18). The updated subfamily HMM
+         database (dbCAN_sub_2025.hmm) is derived from 53,411 CAZyme subfamilies classified using eCAMI (enzyme
+         Classification And Motif Identification), representing an approximately two-fold increase in the number of
+         subfamilies compared with the initial publication.​
+
+1. dbcan​
+    https://github.com/bcb-unl/run_dbcan
+    github.com
+                                                https://run-dbcan.readthedocs.io/en/latest/
+                                            User Guide
+                                            Update: What’s New in run_dbCAN: The new version of run_dbCAN introduces multiple new features and
+                                            significant performance improvements, making the pipeline more user-friendly and efficient. We hig...
+
+    dbCAN3​
+
+
+
+
+    dbCAN-HGM
+​
+​
+2. spacedust​
+    https://github.com/soedinglab/spacedust
+    github.com
+
+
+
+
+​
+​
+3. Cayman
+    https://github.com/zellerlab/cayman
+    GitHub - zellerlab/cayman: A command-line tool for profiling CAZyme abundances in metagenomic datase
+    A command-line tool for profiling CAZyme abundances in metagenomic datasets. - zellerlab/cayman
+
+
+
+
+​
+​
+Functions​
+1. RAG From CAZypedia​
+    https://www.cazypedia.org/
+    CAZypedia
+​
+​
+​
+Weekly/Fortnightly Document​
+ 📍 For each meeting, we encourage you to use Lark/Feishu Doc to present your project progress. But it's fine if you
+   prefer other options​
+     Cazymeseek_完善版.pptx
+​
+Project Task Lists​
+ 🍞 Please paste your project task lists here for easy track of the project progress.​
+​
+​
+
