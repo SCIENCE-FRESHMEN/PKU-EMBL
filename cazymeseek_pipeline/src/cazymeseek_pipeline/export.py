@@ -5,7 +5,7 @@ import csv
 from pathlib import Path
 from typing import Any
 
-STANDARD_FIELDS = ["sample_id", "contig_id", "gene_id", "protein_sequence_id", "protein_cluster_id", "protein_primary_family", "domain_index", "domain_start", "domain_end", "cazy_class", "family_id", "subfamily_id", "EC", "annotation_evidence", "selected_method", "annotation_conflict", "CGC_id", "CGC_gene_composition", "CAZyme_substrate", "CGC_substrate_PUL", "CGC_substrate_vote", "TPM", "RPM", "RPKM", "confidence_tier", "source_database", "version"]
+STANDARD_FIELDS = ["sample_id", "contig_id", "gene_id", "protein_sequence_id", "protein_cluster_id", "domain_start", "domain_end", "cazy_family", "cazy_subfamily", "EC", "annotation_source", "source_rank", "annotation_evidence", "CGC_id", "CGC_gene_composition", "CGC_substrate_PUL", "CGC_substrate_vote", "TPM", "RPM", "RPKM", "confidence_tier", "source_database", "version"]
 
 
 def tier(row: dict[str, str]) -> str:
@@ -16,9 +16,9 @@ def tier(row: dict[str, str]) -> str:
     define A/B/C labels. This transparent mapping preserves those evidence types.
     """
     # 【原有报告逻辑】A/B/C 不是 dbCAN 官方预测分数；PUL 同源结果优先于多数投票。
-    if row.get("CGC_substrate_PUL") or (row.get("subfamily_id") and row.get("EC")):
+    if row.get("CGC_substrate_PUL") or (row.get("cazy_subfamily") and row.get("EC")):
         return "A"
-    if row.get("family_id") and row.get("annotation_evidence"):
+    if row.get("cazy_family") and row.get("annotation_evidence"):
         return "B"
     return "C"
 

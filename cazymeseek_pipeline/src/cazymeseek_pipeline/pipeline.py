@@ -16,6 +16,19 @@ import yaml
 from .deduplicate import run_mmseqs, write_representative_fasta
 
 
+def validate_annotation_config(cfg: dict) -> None:
+    """校验配置没有背离本次强制的 HMMER > Hotpep > DIAMOND 规则。
+
+    ``source_priority`` 允许用户在 YAML 中显式审计权重，但不是可任意
+    改写的调参项；发现非 0/1/2 配置时停止运行而非产生不一致的注释。
+    PUL 阈值只记录于配置，不传入 run_dbcan，确保不改动其原生投票策略。
+    """
+    expected = {"hmmer": 0, "hotpep": 1, "diamond": 2}
+    actual = cfg.get("annotation", {}).get("source_priority", expected)
+    if actual != expected:
+        raise ValueError(f"annotation.source_priority 必须固定为 {expected}，当前为 {actual}")
+
+
 def run(command: list[str], log: Path) -> None:
     """执行一个外部工具并保留 stdout/stderr，保证计算流程可审计。"""
     log.parent.mkdir(parents=True, exist_ok=True)
@@ -140,7 +153,20 @@ def process_individual(cfg: dict, sample: dict) -> None:
             run([cfg["tools"]["dbcan_utils"], utility, "-bt", str(abundance / f"{sid}.depth.txt"), "-i", str(dbcan), "-a", "TPM"], logs / f"{utility}.log")
     # The fixed project schema is a sidecar; published dbcan_utils aggregate files remain authoritative.
     run(["python", "-m", "cazymeseek_pipeline.abundance", "--bam", str(out / f"{sid}.CDS.bam"), "--ffn", str(reference_cds), "--output", str(abundance / "gene_abundance.tsv")], logs / "gene_abundance.log")
-    standardize_cmd = ["python", "-m", "cazymeseek_pipeline.standardize", "--sample-id", sid, "--overview", str(dbcan / "overview.txt"), "--abundance", str(abundance / "gene_abundance.tsv"), "--hmmer", str(dbcan / "hmmer.out"), "--dbcan-sub", str(dbcan / "dbcan-sub.hmm.out"), "--cgc-standard", str(dbcan / "cgc_standard.out"), "--substrate", str(dbcan / "substrate.out"), "--output", str(out / "standardized_annotations.csv")]
+    # 新增冲突裁决链：各工具结果分别传入 standardize，不进行无差别拼接。
+    annotation_cfg = cfg.get("annotation", {})
+    standardize_cmd = ["python", "-m", "cazymeseek_pipeline.standardize", "--sample-id", sid,
+                       "--abundance", str(abundance / "gene_abundance.tsv"), "--hmmer", str(dbcan / "hmmer.out"),
+                       "--diamond", str(dbcan / "diamond.out"), "--dbcan-sub", str(dbcan / "dbcan-sub.hmm.out"),
+                       "--cgc-standard", str(dbcan / "cgc_standard.out"), "--substrate", str(dbcan / "substrate.out"),
+                       "--domain-overlap-threshold", str(annotation_cfg.get("domain_overlap_threshold", .80)),
+                       "--output", str(out / "standardized_annotations.csv")]
+    hotpep_output = annotation_cfg.get("hotpep_output")
+    if hotpep_output:
+        standardize_cmd.extend(["--hotpep", hotpep_output])
+    ec_mapping = annotation_cfg.get("ec_mapping_tsv")
+    if ec_mapping:
+        standardize_cmd.extend(["--ec-mapping", ec_mapping])
     if cluster_tsv: standardize_cmd.extend(["--cluster-map", str(cluster_tsv)])
     run(standardize_cmd, logs / "standardize.log")
 
@@ -149,6 +175,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(); parser.add_argument("--config", required=True); parser.add_argument("--sample")
     args = parser.parse_args()
     with open(args.config, encoding="utf-8") as handle: cfg = yaml.safe_load(handle)
+    validate_annotation_config(cfg)
     mode = cfg["assembly"]["mode"]
     if mode != "individual":
         raise NotImplementedError(f"'{mode}' is documented in README but not silently approximated by this individual-assembly wrapper.")

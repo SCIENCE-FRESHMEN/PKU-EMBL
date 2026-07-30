@@ -1,24 +1,31 @@
-# CAZymeSeek Pipeline Modification Log
+# CAZymeSeek Annotation Arbitration Refactor Log
 
-## Scope and evidence boundary
+## Reference boundary
 
-- **Reference:** `2024.01.10.575125v1.full.pdf`, especially P5--P13 and Box 6--8; `EB05_ CAZymeSeek.pdf` plus the supplied four-store vector asset.
-- **Boundary:** this record distinguishes published dbCAN behavior from CAZymeSeek reporting extensions. No sequence deep-learning model or new PUL voting algorithm has been introduced.
-- **Regression suite:** run `PYTHONPATH=src python -m unittest discover -s tests -v`.
+- Core dbCAN workflow: `2024.01.10.575125v1.full.pdf`, P5--P13 and Box 6--8.
+- CAZymeSeek knowledge asset: `EB05_ CAZymeSeek.pdf` and supplied four ChromaDB stores.
+- This refactor applies the project's requested `HMMER > Hotpep > DIAMOND` order. dbCAN4's protocol describes dbCAN-sub/eCAMI replacing Hotpep; therefore Hotpep is optional and is only used when a compatible result file is supplied.
+- No PUL candidate vote, sequence deep-learning classifier, or fabricated EC assignment is introduced.
 
-## Issue-to-change matrix
+## Change matrix
 
-| Teacher issue | Changed files | Implemented logic | Biological/computational basis | Regression test |
+| Defect / required rule | Files | Implementation | Biological rationale | Test |
 |---|---|---|---|---|
-| 1. Conflicting dbCAN calls lack HMM priority | `annotation.py`, `standardize.py`, `export.py` | `protein_primary_family` follows `dbCAN HMM > dbCAN-sub/eCAMI > DIAMOND`; raw calls, selected method and conflict flag remain traceable | dbCAN protocol Box 6 gives this family preference | `test_conflict_priority.py` |
-| 2. Multi-domain proteins are truncated | `annotation.py`, `standardize.py`, `export.py` | Every HMM/dbCAN-sub hit emits one domain row with index and coordinates | A protein may contain multiple independent CAZyme modules; first-hit-only export loses architecture | `test_multidomain.py` |
-| 3. Subfamily EC is missing | `annotation.py`, `standardize.py` | EC only propagates from curated dbCAN-sub/overview fields for the corresponding dbCAN-sub domain | Protocol maps eCAMI subfamilies to EC and substrate; no universal family-suffix EC table is asserted | `test_ec_mapping.py` |
-| 4. dbCAN-PUL preference and candidate vote are unchanged | `pipeline.py`, `standardize.py`, `export.py` | Existing `--cgc_substrate` call remains; PUL homology and majority vote export in separate fields; no re-vote code | Protocol prefers dbCAN-PUL homology to majority voting | `test_pul_passthrough.py` |
-| 5. Homolog redundancy before optional abundance mapping | `deduplicate.py`, `pipeline.py`, `standardize.py`, `config.example.yaml` | Optional MMseqs representatives; matching FFN is used for BWA, representatives receive one quantitative record and `protein_cluster_id` | Box 8 example uses >0.95 identity and >0.95 coverage. Standard P13 all-CDS `dbcan_utils` path remains default | `test_deduplication.py` |
+| Fixed source priority | `annotation.py`, `standardize.py`, `export.py`, `config.example.yaml` | `SOURCE_RANK={hmmer:0, hotpep:1, diamond:2}`; output has `annotation_source` and `source_rank` | Conservatively retain the strongest method where annotations conflict | `test_conflict_priority.py` |
+| No blind concatenation | `annotation.py`, `standardize.py` | Individual source parsers feed `resolve_conflicts`; no `pd.concat` or unfiltered union | Prevents lower-priority overlapping calls from being double counted | `test_conflict_priority.py` |
+| Multi-domain preservation | `annotation.py`, `standardize.py`, `export.py` | Results are keyed by `gene_id + domain_start + domain_end`; independent intervals all emit | CAZyme fusion proteins can contain multiple functional modules | `test_multidomain.py` |
+| >=80% overlap arbitration | `annotation.py`, `config.example.yaml` | `interval_overlap()` uses overlap / shorter interval, configurable `domain_overlap_threshold: 0.80` | Highly overlapping calls represent the same domain; retain lowest source rank | `test_conflict_priority.py` |
+| Domain coordinates / family fields | `standardize.py`, `export.py` | Mandatory `domain_start`, `domain_end`, `cazy_family`, `cazy_subfamily` | Separates protein architecture from family/subfamily functional label | `test_multidomain.py` |
+| Two-tier EC mapping | `annotation.py`, `standardize.py` | `map_ec()` uses subfamily first, then family, otherwise blank; curated TSV/dbCAN-sub only | Subfamily functional specificity is more precise; no uncurated EC inference | `test_ec_mapping.py` |
+| PUL routes unchanged | `pipeline.py`, `standardize.py` | Native `--cgc_substrate` stays; `CGC_substrate_PUL` and `CGC_substrate_vote` are separate read-only exports | dbCAN protocol keeps PUL homology and CAZyme majority vote as two routes | `test_pul_passthrough.py` |
+| Optional homolog cluster quantification | `deduplicate.py`, `pipeline.py`, `standardize.py`, config | MMseqs2 representative catalog, configurable 0.95 identity/coverage; default full-CDS mode remains | Protocol Box 8 gives a 95%/95% nonredundant catalog example | `test_deduplication.py` |
 
-## Operational notes
+## Test commands
 
-- `deduplication.enabled: false` is the default and preserves official P13 aggregate abundance output.
-- `deduplication.enabled: true` is a CAZymeSeek cluster-level reporting extension. It must be reported with `protein_cluster_id` and must not be described as the dbCAN paper's mandatory TPM procedure.
-- A/B/C fields are a transparent project reporting convention. They are not dbCAN confidence scores.
-- Tests use fixtures only. They do not claim synthetic sequences are biologically annotated CAZymes.
+```bash
+cd cazymeseek_pipeline
+PYTHONPATH=src python -m unittest discover -s tests -v
+PYTHONPATH=src python demo/test_demo.py
+```
+
+The fixture suite checks arbitration, independent domains, EC fallback, unchanged PUL-field pass-through, and representative FASTA construction without requiring external databases.

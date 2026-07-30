@@ -1,4 +1,4 @@
-sample_id,contig_id,gene_id,protein_sequence_id,protein_cluster_id,protein_primary_family,domain_index,domain_start,domain_end,cazy_class,family_id,subfamily_id,EC,annotation_evidence,selected_method,annotation_conflict,CGC_id,CGC_gene_composition,CAZyme_substrate,CGC_substrate_PUL,CGC_substrate_vote,TPM,RPM,RPKM,confidence_tier,source_database,version
-demo,,gene_A,gene_A,,,,,,,GH1,GH1_1,3.2.1.21,dbCAN; dbCAN_sub,,,,,,,,100,,,A,dbCAN/CAZy/dbCAN-PUL,run_dbcan-4.0.0
-demo,,gene_B,gene_B,,,,,,,GH43,,,dbCAN,,,,,,,,40,,,B,dbCAN/CAZy/dbCAN-PUL,run_dbcan-4.0.0
-demo,,gene_C,gene_C,,,,,,,,,,majority_vote,,,,,,,xylan,5,,,C,dbCAN/CAZy/dbCAN-PUL,run_dbcan-4.0.0
+sample_id,contig_id,gene_id,protein_sequence_id,protein_cluster_id,domain_start,domain_end,cazy_family,cazy_subfamily,EC,annotation_source,source_rank,annotation_evidence,CGC_id,CGC_gene_composition,CGC_substrate_PUL,CGC_substrate_vote,TPM,RPM,RPKM,confidence_tier,source_database,version
+demo,,gene_A,gene_A,,,,GH1,GH1_1,3.2.1.21,hmmer,0,HMMER:GH1,,,,,100,,,A,dbCAN/CAZy/dbCAN-PUL,run_dbcan-4.0.0
+demo,,gene_B,gene_B,,,,GH43,,,diamond,2,DIAMOND:GH43,,,,,40,,,B,dbCAN/CAZy/dbCAN-PUL,run_dbcan-4.0.0
+demo,,gene_C,gene_C,,,,,,,,,majority_vote,,,,xylan,5,,,C,dbCAN/CAZy/dbCAN-PUL,run_dbcan-4.0.0

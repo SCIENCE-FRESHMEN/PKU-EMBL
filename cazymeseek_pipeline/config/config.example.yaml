@@ -42,6 +42,25 @@ tools:
   dbcan_utils: dbcan_utils
   mmseqs: mmseqs
 
+annotation:
+  # 新增修复1：严格固定的裁决顺序与权重。不得改变为无差别合并。
+  source_priority:
+    hmmer: 0
+    hotpep: 1
+    diamond: 2
+  # 新增修复4：同 gene_id 的两个域，交叠比例 >= 0.80 时视为同一域，保留较小 source_rank。
+  domain_overlap_threshold: 0.80
+  # 可选 legacy Hotpep TSV；dbCAN4 已用 eCAMI/dbCAN-sub 取代 Hotpep，默认留空。
+  hotpep_output: ""
+  # 可选策展 subfamily/family -> EC TSV；为空时读取 dbcan-sub.hmm.out 内的 EC 字段。
+  ec_mapping_tsv: ""
+
+pul_voting:
+  # 问题8：原始 run_dbcan PUL 同源/多数投票策略不被本工程修改。
+  # 本配置仅记录和透传研究使用的阈值，不能重写已生成 substrate.out 的候选投票结果。
+  enabled: true
+  majority_vote_threshold: null
+
 deduplication:
   # 【新增修复5】默认关闭(false)：严格执行论文 P13 的全 CDS + dbcan_utils TPM。
   # 开启(true)：先用 MMseqs2 将高度同源蛋白归并为代表序列，再对对应 FFN 代表 CDS 回贴；

@@ -1,12 +1,12 @@
-# CAZymeSeek Pipeline: Five-Item Update Guide
+# CAZymeSeek Pipeline: Domain-Arbitration Update Guide
 
 ## What changed
 
 | Update | User-visible behavior | Output fields |
 |---|---|---|
-| Method conflicts | Protein primary family follows dbCAN HMM, then dbCAN-sub/eCAMI, then DIAMOND | `protein_primary_family`, `selected_method`, `annotation_conflict`, `annotation_evidence` |
-| Multi-domain proteins | Each domain is a separate row; no first-domain truncation | `domain_index`, `domain_start`, `domain_end`, domain-level `family_id`, `subfamily_id` |
-| EC mapping | EC is retained only when supplied by curated dbCAN-sub/overview evidence | `EC`, `CAZyme_substrate` |
+| Method conflicts | Same-domain calls follow HMMER, then Hotpep, then DIAMOND | `annotation_source`, `source_rank`, `annotation_evidence` |
+| Multi-domain proteins | Each independent domain is a separate row; >=80% overlap is arbitrated | `domain_start`, `domain_end`, `cazy_family`, `cazy_subfamily` |
+| EC mapping | Curated mapping uses subfamily first, then family; unmatched EC stays blank | `EC` |
 | PUL routes | dbCAN-PUL homology and majority-vote calls stay separate and unchanged | `CGC_substrate_PUL`, `CGC_substrate_vote` |
 | Optional homolog reduction | MMseqs representative CDS catalog can be used before BWA quantification | `protein_cluster_id`, TPM/RPM/RPKM |
 
@@ -19,7 +19,7 @@ export PYTHONPATH="$PWD/src"
 python -m cazymeseek_pipeline.pipeline --config config/config.yaml --sample SAMPLE_ID
 ```
 
-`run_dbcan --cgc_substrate` is retained in the generated command. It produces the original `substrate.out`; the pipeline only exports its two reported methods without altering their candidate vote.
+`run_dbcan --cgc_substrate` is retained in the generated command. It produces the original `substrate.out`; the pipeline only exports its two reported methods without altering their candidate vote. `annotation.hotpep_output` is optional because modern dbCAN's documented workflow uses dbCAN-sub/eCAMI; when a legacy Hotpep table is supplied it participates with rank 1.
 
 ## Optional MMseqs representative-cluster quantification
 
@@ -38,10 +38,11 @@ deduplication:
 
 ## Interpretation of the updated fields
 
-- `protein_primary_family`: resolved protein-level family only; conflict priority is applied here.
-- `family_id` and `subfamily_id`: domain-level labels. A fusion protein can have more than one result row.
-- `EC`: only a curated dbCAN-sub/overview EC. Empty means no curated mapping was found, not that an EC was inferred as absent.
-- `annotation_evidence`: all raw dbCAN/dbCAN-sub/DIAMOND calls retained for review.
+- `cazy_family` / `cazy_subfamily`: domain-level family labels. A fusion protein can have more than one result row.
+- `domain_start` / `domain_end`: protein-coordinate interval for each output domain.
+- `annotation_source` / `source_rank`: HMMER/0, Hotpep/1, DIAMOND/2.
+- `EC`: curated subfamily mapping first, family fallback second. Empty means no curated mapping was found.
+- `annotation_evidence`: source annotation retained for review.
 - `CGC_substrate_PUL`: dbCAN-PUL homology result, preferred by the published protocol when present.
 - `CGC_substrate_vote`: dbCAN-sub CAZyme majority-voting result; it remains a separate route.
 

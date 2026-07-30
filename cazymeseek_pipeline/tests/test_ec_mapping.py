@@ -1,13 +1,14 @@
 import unittest
 
-from cazymeseek_pipeline.annotation import ec_values
+from cazymeseek_pipeline.annotation import map_ec
 
 
 class EcMappingTest(unittest.TestCase):
-    def test_only_dbcan_sub_domain_receives_curated_ec(self):
-        overview = {"EC#": "3.2.1.21"}
-        self.assertEqual(ec_values(overview, {"method": "dbCAN_sub", "domain_ec": ""}), "3.2.1.21")
-        self.assertEqual(ec_values(overview, {"method": "dbCAN", "domain_ec": ""}), "")
+    def test_subfamily_mapping_precedes_family_mapping(self):
+        candidate = {"cazy_family": "GH43", "cazy_subfamily": "GH43_4"}
+        self.assertEqual(map_ec(candidate, {"GH43_4": "3.2.1.55", "GH43": "3.2.1.99"}), "3.2.1.55")
 
-    def test_missing_mapping_stays_blank(self):
-        self.assertEqual(ec_values({}, {"method": "dbCAN_sub", "domain_ec": ""}), "")
+    def test_family_is_fallback_and_missing_is_blank(self):
+        candidate = {"cazy_family": "GH43", "cazy_subfamily": "GH43_4"}
+        self.assertEqual(map_ec(candidate, {"GH43": "3.2.1.99"}), "3.2.1.99")
+        self.assertEqual(map_ec(candidate, {}), "")
