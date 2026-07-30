@@ -1,0 +1,4 @@
+sample_id,contig_id,gene_id,protein_sequence_id,protein_cluster_id,protein_primary_family,domain_index,domain_start,domain_end,cazy_class,family_id,subfamily_id,EC,annotation_evidence,selected_method,annotation_conflict,CGC_id,CGC_gene_composition,CAZyme_substrate,CGC_substrate_PUL,CGC_substrate_vote,TPM,RPM,RPKM,confidence_tier,source_database,version
+demo,,protein_1,protein_1,protein_1,GH1,1,5,90,GH,GH1,GH1,,"dbCAN:GH1,GH3 | dbCAN_sub:GH43_e149 | DIAMOND:GH43_4",dbCAN,true,,,,,,100,50,50,B,dbCAN/CAZy/dbCAN-PUL,run_dbcan-4.0.0
+demo,,protein_1,protein_1,protein_1,GH1,2,110,200,GH,GH3,GH3,,"dbCAN:GH1,GH3 | dbCAN_sub:GH43_e149 | DIAMOND:GH43_4",dbCAN,true,,,,,,100,50,50,B,dbCAN/CAZy/dbCAN-PUL,run_dbcan-4.0.0
+demo,,protein_1,protein_1,protein_1,GH1,3,,,GH,GH43,GH43_e149,3.2.1.21,"dbCAN:GH1,GH3 | dbCAN_sub:GH43_e149 | DIAMOND:GH43_4",dbCAN,true,,,xylan,,,100,50,50,A,dbCAN/CAZy/dbCAN-PUL,run_dbcan-4.0.0

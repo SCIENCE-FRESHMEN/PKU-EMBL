@@ -40,6 +40,18 @@ tools:
   bedtools: bedtools
   seqkit: seqkit
   dbcan_utils: dbcan_utils
+  mmseqs: mmseqs
+
+deduplication:
+  # 【新增修复5】默认关闭(false)：严格执行论文 P13 的全 CDS + dbcan_utils TPM。
+  # 开启(true)：先用 MMseqs2 将高度同源蛋白归并为代表序列，再对对应 FFN 代表 CDS 回贴；
+  # 结果附带 protein_cluster_id，适合需要降低冗余基因重复计数的项目比较。
+  # 注意：此模式是 CAZymeSeek 的可选定量扩展，不能替代原始 dbcan_utils 家族/CGC 汇总结果。
+  enabled: false                 # 推荐默认 false；确认需要代表序列簇定量时改为 true。
+  # MMseqs2 --min-seq-id；论文 Box 8 的非冗余蛋白目录示例为 identity > 0.95。
+  min_seq_identity: 0.95
+  # MMseqs2 -c 覆盖度；论文 Box 8 示例为 coverage > 0.95。
+  coverage: 0.95
 
 retrieval:
   # Project assets provide cosine distance but no score cutoff; retain all top-k evidence.

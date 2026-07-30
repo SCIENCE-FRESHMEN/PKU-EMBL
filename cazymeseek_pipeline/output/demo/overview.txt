@@ -1,0 +1,2 @@
+Gene ID	EC#	dbCAN	dbCAN_sub	DIAMOND
+protein_1	3.2.1.21	GH1(5-90);GH3(110-200)	GH43_e149	GH43_4

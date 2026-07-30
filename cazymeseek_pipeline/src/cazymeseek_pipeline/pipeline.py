@@ -1,4 +1,4 @@
-"""Published dbCAN read-to-annotation workflow wrapper.
+"""已发表 dbCAN read-to-annotation 工作流封装。
 
 Source convention: ``[dbCAN PDF, section]`` refers to
 2024.01.10.575125v1.full.pdf. This module only orchestrates published tools;
@@ -13,16 +13,18 @@ from pathlib import Path
 
 import yaml
 
+from .deduplicate import run_mmseqs, write_representative_fasta
+
 
 def run(command: list[str], log: Path) -> None:
-    """Execute one auditable command and capture stdout/stderr in its stage log."""
+    """执行一个外部工具并保留 stdout/stderr，保证计算流程可审计。"""
     log.parent.mkdir(parents=True, exist_ok=True)
     with log.open("w", encoding="utf-8") as handle:
         subprocess.run(command, check=True, stdout=handle, stderr=subprocess.STDOUT)
 
 
 def sample_rows(path: Path):
-    """Read ``sample_id, read1, read2`` paired-end input rows."""
+    """读取配对端输入表：sample_id、read1、read2。"""
     with path.open(newline="", encoding="utf-8") as handle:
         yield from csv.DictReader(handle, delimiter="\t")
 
@@ -44,6 +46,8 @@ def dbcan_command(cfg: dict, faa: Path, gff: Path, output: Path) -> list[str]:
     dbCAN-PUL homology and dbCAN-sub majority-voting predictions [P5--P7].
     """
     cpu = str(cfg["resources"]["threads"])
+    # 【问题4：原有逻辑保持】--cgc_substrate 交由 run_dbcan 原生实现 PUL 同源
+    # 与 dbCAN-sub 多数投票；本工程不新增或修改任意 PUL 候选投票规则。
     return [cfg["tools"]["run_dbcan"], str(faa), "protein", "--db_dir", cfg["paths"]["dbcan_db_dir"],
             "--out_dir", str(output), "--dia_cpu", cpu, "--hmm_cpu", cpu,
             "--dbcan_thread", cpu, "--tf_cpu", cpu, "--stp_cpu", cpu,
@@ -99,14 +103,26 @@ def process_individual(cfg: dict, sample: dict) -> None:
     abundance.mkdir(parents=True, exist_ok=True)
     clean = out / "clean"; t1, t2 = clean / trim_output(sample["read1"], 1), clean / trim_output(sample["read2"], 2)
     threads = str(cfg["resources"]["threads"])
-    # P8--P11: map clean reads to all CDS, count with Bedtools, then normalize with dbcan_utils.
-    for label, reference, bam_name in [("CDS", prokka / f"{sid}.ffn", f"{sid}.CDS.bam"), ("contig", assembly / f"{sid}.contigs.fa", f"{sid}.contig.bam")]:
+    # 【新增修复5】可选 Box 8 MMseqs 95% identity/coverage 代表序列簇目录。
+    # The dbCAN paper uses this to reduce catalog redundancy; cluster-level TPM is an
+    # explicit project extension, so output carries ``protein_cluster_id``.
+    reference_cds = prokka / f"{sid}.ffn"; cluster_tsv = None
+    dedup = cfg.get("deduplication", {})
+    if dedup.get("enabled", False):
+        cluster_prefix = abundance / f"{sid}.nr"
+        cluster_tsv = run_mmseqs(cfg["tools"]["mmseqs"], prokka / f"{sid}.faa", cluster_prefix,
+                                 abundance / "mmseqs_tmp", dedup["min_seq_identity"],
+                                 dedup["coverage"], int(threads))
+        reference_cds = abundance / f"{sid}.nr.ffn"
+        write_representative_fasta(prokka / f"{sid}.ffn", cluster_tsv, reference_cds)
+    # 【原有 P8--P11】默认全 CDS；开启修复5后改为显式非冗余代表 CDS 目录。
+    for label, reference, bam_name in [("CDS", reference_cds, f"{sid}.CDS.bam"), ("contig", assembly / f"{sid}.contigs.fa", f"{sid}.contig.bam")]:
         run([cfg["tools"]["bwa"], "index", str(reference)], logs / f"{label}.index.log")
         sam = out / f"{sid}.{label}.sam"; bam = out / bam_name
         run([cfg["tools"]["bwa"], "mem", "-t", threads, "-o", str(sam), str(reference), str(t1), str(t2)], logs / f"{label}.map.log")
         run([cfg["tools"]["samtools"], "sort", "-@", threads, "-o", str(bam), str(sam)], logs / f"{label}.sort.log")
     # P11 needs a two-column genome-length file and a BED-like zero-start record per CDS.
-    lengths = subprocess.check_output([cfg["tools"]["seqkit"], "fx2tab", "-l", "-n", "-i", str(prokka / f"{sid}.ffn")], text=True)
+    lengths = subprocess.check_output([cfg["tools"]["seqkit"], "fx2tab", "-l", "-n", "-i", str(reference_cds)], text=True)
     length_file, bed_file = abundance / f"{sid}.length", abundance / f"{sid}.bed"
     with length_file.open("w", encoding="utf-8") as length_handle, bed_file.open("w", encoding="utf-8") as bed_handle:
         for line in lengths.splitlines():
@@ -116,12 +132,17 @@ def process_individual(cfg: dict, sample: dict) -> None:
     # Bedtools writes coverage to stdout; capture it as the P11 depth input.
     with (abundance / f"{sid}.depth.txt").open("w", encoding="utf-8") as handle:
         subprocess.run([cfg["tools"]["bedtools"], "coverage", "-g", str(length_file), "-sorted", "-a", str(bed_file), "-counts", "-b", str(out / f"{sid}.CDS.bam")], check=True, stdout=handle, stderr=subprocess.STDOUT)
-    # dbcan_utils is the published normalizer; it computes gene/family/subfamily/CGC/substrate TPM.
-    for utility in ("fam_abund", "fam_substrate_abund", "CGC_abund", "CGC_substrate_abund"):
-        run([cfg["tools"]["dbcan_utils"], utility, "-bt", str(abundance / f"{sid}.depth.txt"), "-i", str(dbcan), "-a", "TPM"], logs / f"{utility}.log")
+    # dbcan_utils is used in the standard all-CDS mode specified by P13. It cannot
+    # receive representative-only counts while retaining all original CGC members;
+    # representative mode therefore exports corrected per-cluster records separately.
+    if not dedup.get("enabled", False):
+        for utility in ("fam_abund", "fam_substrate_abund", "CGC_abund", "CGC_substrate_abund"):
+            run([cfg["tools"]["dbcan_utils"], utility, "-bt", str(abundance / f"{sid}.depth.txt"), "-i", str(dbcan), "-a", "TPM"], logs / f"{utility}.log")
     # The fixed project schema is a sidecar; published dbcan_utils aggregate files remain authoritative.
-    run(["python", "-m", "cazymeseek_pipeline.abundance", "--bam", str(out / f"{sid}.CDS.bam"), "--ffn", str(prokka / f"{sid}.ffn"), "--output", str(abundance / "gene_abundance.tsv")], logs / "gene_abundance.log")
-    run(["python", "-m", "cazymeseek_pipeline.standardize", "--sample-id", sid, "--overview", str(dbcan / "overview.txt"), "--abundance", str(abundance / "gene_abundance.tsv"), "--cgc-standard", str(dbcan / "cgc_standard.out"), "--substrate", str(dbcan / "substrate.out"), "--output", str(out / "standardized_annotations.csv")], logs / "standardize.log")
+    run(["python", "-m", "cazymeseek_pipeline.abundance", "--bam", str(out / f"{sid}.CDS.bam"), "--ffn", str(reference_cds), "--output", str(abundance / "gene_abundance.tsv")], logs / "gene_abundance.log")
+    standardize_cmd = ["python", "-m", "cazymeseek_pipeline.standardize", "--sample-id", sid, "--overview", str(dbcan / "overview.txt"), "--abundance", str(abundance / "gene_abundance.tsv"), "--hmmer", str(dbcan / "hmmer.out"), "--dbcan-sub", str(dbcan / "dbcan-sub.hmm.out"), "--cgc-standard", str(dbcan / "cgc_standard.out"), "--substrate", str(dbcan / "substrate.out"), "--output", str(out / "standardized_annotations.csv")]
+    if cluster_tsv: standardize_cmd.extend(["--cluster-map", str(cluster_tsv)])
+    run(standardize_cmd, logs / "standardize.log")
 
 
 def main() -> None:

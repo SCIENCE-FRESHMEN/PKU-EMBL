@@ -90,13 +90,26 @@ The executable wrapper rejects non-`individual` modes rather than silently chang
 
 ## Outputs and evidence labels
 
-Standardized records retain: `sample_id`, `contig_id`, `gene_id`, `protein_sequence_id`, `cazy_class`, `family_id`, `subfamily_id`, `EC`, `annotation_evidence`, `CGC_id`, `CGC_gene_composition`, `CAZyme_substrate`, `CGC_substrate_PUL`, `CGC_substrate_vote`, `TPM`, `RPM`, `RPKM`, `confidence_tier`, `source_database`, and `version`.
+Standardized records retain: `sample_id`, `contig_id`, `gene_id`, `protein_sequence_id`, `protein_cluster_id`, `protein_primary_family`, `domain_index`, `domain_start`, `domain_end`, `cazy_class`, `family_id`, `subfamily_id`, `EC`, `annotation_evidence`, `selected_method`, `annotation_conflict`, `CGC_id`, `CGC_gene_composition`, `CAZyme_substrate`, `CGC_substrate_PUL`, `CGC_substrate_vote`, `TPM`, `RPM`, `RPKM`, `confidence_tier`, `source_database`, and `version`.
 
 - **A:** dbCAN-sub subfamily with EC, or CGC substrate supported by dbCAN-PUL homology. The PDF recommends dbCAN-PUL homology over majority voting.
 - **B:** a documented family call with annotation evidence. The PDF preference when methods disagree is dbCAN HMM > dbCAN-sub/eCAMI > DIAMOND.
 - **C:** majority-vote or knowledge retrieval only. It is a candidate hypothesis, never a validated substrate result.
 
 No numeric biological confidence threshold is assigned: neither source PDF defines one. MiniLM semantic score is only a cosine retrieval score.
+
+## Five corrections in this release
+
+1. **Conflict priority:** `annotation.py` records all dbCAN/dbCAN-sub/DIAMOND family calls and resolves only `protein_primary_family` as `dbCAN HMM > dbCAN-sub/eCAMI > DIAMOND`, the order in dbCAN Box 6. `selected_method` and `annotation_conflict` make every override auditable; individual `family_id` values remain domain-specific.
+2. **Multi-domain preservation:** HMM and dbCAN-sub domain rows are expanded, with `domain_index`, `domain_start`, `domain_end`, and `subfamily_id`; one protein can therefore generate multiple output rows. No “first domain only” reduction occurs.
+3. **EC matching:** EC is copied only from the curated dbCAN-sub/`overview.txt` release output. An uncurated family/subfamily remains blank: the PDF does not support an invented universal GH/GT-to-EC dictionary.
+4. **PUL routes unchanged:** `run_dbcan --cgc_substrate` remains intact. `substrate.out` retains `CGC_substrate_PUL` and `CGC_substrate_vote` separately; it neither re-votes candidates nor replaces the document's preference of dbCAN-PUL homology over majority voting.
+5. **Optional redundancy-aware abundance:** `deduplication.enabled: true` applies the PDF Box 8 MMseqs2 example (`>0.95` identity and `>0.95` coverage) before CDS mapping and reports a `protein_cluster_id`. Default `false` preserves the official P13 all-CDS `dbcan_utils` aggregate pathway. Cluster TPM is explicitly a project reporting mode, not a claim that the PDF requires it for all abundance analyses.
+
+```bash
+# Validate the fixes without databases or Linux bioinformatics executables.
+PYTHONPATH=src python demo/test_demo.py
+```
 
 ## Visualizations
 
